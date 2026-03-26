@@ -613,7 +613,7 @@ _CONFIGS = [
         project_name="openpi_kinova",
         model=pi0_config.Pi0Config(action_horizon=16),
         data=LeRobotKinovaDataConfig(
-            repo_id="./dataset/20260221_T00-00-01-00_merge_last_frame",
+            repo_id="20260221_T00-00-01-00_merge_last_frame",
             base_config=DataConfig(prompt_from_task=False),
             default_prompt="Assemble to match the goal image.",
         ),

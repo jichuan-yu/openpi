@@ -3,6 +3,7 @@ assets/
 checkpoints/
 data/
 dataset/
+datasets/
 wandb/
 
 # Byte-compiled / optimized / DLL files
