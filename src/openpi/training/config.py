@@ -360,8 +360,8 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 class LeRobotKinovaDataConfig(DataConfigFactory):
     """Config for Kinova Gen3 datasets in LeRobot format."""
 
-    default_prompt: str | None = "perform the task"
-    use_delta_actions: bool = True
+    default_prompt: str | None = "Assemble to match the goal image."
+    use_delta_actions: bool = False
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
@@ -369,8 +369,9 @@ class LeRobotKinovaDataConfig(DataConfigFactory):
             inputs=[
                 _transforms.RepackTransform(
                     {
-                        "observation/image": "observation.images.fixed_camera",
-                        "observation/wrist_image": "observation.images.wrist_camera",
+                        "observation/fixed_camera": "observation.images.fixed_camera",
+                        "observation/wrist_camera": "observation.images.wrist_camera",
+                        "observation/goal_image": "observation.images.goal_image",
                         "observation/state": "observation.state",
                         "actions": "action",
                     }
@@ -604,6 +605,22 @@ class TrainConfig:
 
 # Use `get_config` if you need to get a config by name in your code.
 _CONFIGS = [
+    #######################################################################################################3333
+    # Fine-tuning Kinova configs.
+    #######################################################################################################3333
+    TrainConfig(
+        name="pi0_kinova",
+        project_name="openpi_kinova",
+        model=pi0_config.Pi0Config(action_horizon=16),
+        data=LeRobotKinovaDataConfig(
+            repo_id="./dataset/20260221_T00-00-01-00_merge_last_frame",
+            base_config=DataConfig(prompt_from_task=False),
+            default_prompt="Assemble to match the goal image.",
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+    ),
     #
     # Inference Aloha configs.
     #
@@ -806,21 +823,6 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         pytorch_weight_path="/path/to/your/pytorch_weight_path",
         num_train_steps=30_000,
-    ),
-    #
-    # Fine-tuning Kinova configs.
-    #
-    TrainConfig(
-        name="pi0_kinova",
-        model=pi0_config.Pi0Config(action_dim=32, action_horizon=10),
-        data=LeRobotKinovaDataConfig(
-            repo_id="your_hf_username/kinova_dataset",
-            base_config=DataConfig(prompt_from_task=False),
-            default_prompt="perform the task",
-        ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        num_train_steps=30_000,
-        batch_size=32,
     ),
     #
     # Fine-tuning Aloha configs.

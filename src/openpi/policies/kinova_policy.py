@@ -7,15 +7,6 @@ from openpi import transforms
 from openpi.models import model as _model
 
 
-def make_kinova_example() -> dict:
-    """Creates a random input example for the Kinova policy."""
-    return {
-        "observation/state": np.random.rand(13),
-        "observation/image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
-        "observation/wrist_image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
-        "prompt": "perform the task",
-    }
-
 
 def _parse_image(image) -> np.ndarray:
     image = np.asarray(image)
@@ -28,25 +19,34 @@ def _parse_image(image) -> np.ndarray:
 
 @dataclasses.dataclass(frozen=True)
 class KinovaInputs(transforms.DataTransformFn):
-    """Inputs for Kinova datasets in LeRobot format."""
+    """
+    Inputs for Kinova datasets in LeRobot format.
+
+
+    Expected inputs:
+    - fixed_camera/wrist_camera/goal_image: [channel, height, width]
+    - state: [13]: [x_ee(9), q_grip(1), f_ext(3)]
+    - actions: [action_horizon, 10]: [x_ee(9), q_grip(1)]
+    """
 
     model_type: _model.ModelType
 
     def __call__(self, data: dict) -> dict:
-        base_image = _parse_image(data["observation/image"])
-        wrist_image = _parse_image(data["observation/wrist_image"])
+        fixed_camera = _parse_image(data["observation/fixed_camera"])
+        wrist_camera = _parse_image(data["observation/wrist_camera"])
+        goal_image = _parse_image(data["observation/goal_image"])
 
         inputs = {
             "state": data["observation/state"],
             "image": {
-                "base_0_rgb": base_image,
-                "left_wrist_0_rgb": wrist_image,
-                "right_wrist_0_rgb": np.zeros_like(base_image),
+                "base_0_rgb": fixed_camera,
+                "left_wrist_0_rgb": wrist_camera,
+                "right_wrist_0_rgb": goal_image,
             },
             "image_mask": {
                 "base_0_rgb": np.True_,
                 "left_wrist_0_rgb": np.True_,
-                "right_wrist_0_rgb": np.False_ if self.model_type != _model.ModelType.PI0_FAST else np.True_,
+                "right_wrist_0_rgb": np.True_,
             },
         }
 
