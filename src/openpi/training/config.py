@@ -611,7 +611,11 @@ _CONFIGS = [
     TrainConfig(
         name="pi0_kinova",
         project_name="openpi_kinova",
-        model=pi0_config.Pi0Config(action_horizon=16),
+        model=pi0_config.Pi0Config(
+            action_horizon=16,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
         data=LeRobotKinovaDataConfig(
             repo_id="20260221_T00-00-01-00_merge_last_frame",
             base_config=DataConfig(prompt_from_task=False),
@@ -620,6 +624,12 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=30_000,
         batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            action_horizon=16,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None, # Turn off EMA for LoRA finetuning.
     ),
     #
     # Inference Aloha configs.
