@@ -74,6 +74,12 @@ uv run scripts/compute_norm_stats.py --config-name pi0_kinova
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi0_kinova --exp-name=20260326_0010 --overwrite
 ```
 
+**4. Inference**
+
+Set the args in `openpi/examples/kinova_real/main.py`, then run:
+```bash
+python -m examples.kinova_real.main
+```
 
 
 ## Sync Data
