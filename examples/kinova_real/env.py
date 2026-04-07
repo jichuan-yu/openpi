@@ -7,6 +7,7 @@ from typing import Optional
 import cv2
 import numpy as np
 import rospy
+from scipy.spatial.transform import Rotation
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped, WrenchStamped
 from openpi_client import image_tools
@@ -32,7 +33,7 @@ class KinovaEnvironment(_environment.Environment):
         render_width: int = 224,
         force_scale_factor: float = 0.05,
         goal_image_path: str | None = None,
-        prompt: str | None = "Assemble to match the goal image.",
+        prompt: str | None = "<control_mode> end effector </control_mode> Assemble to match the goal image.",
         wait_timeout_sec: float = 10.0,
         init_node: bool = True,
     ) -> None:
@@ -260,26 +261,7 @@ class KinovaEnvironment(_environment.Environment):
 
     @staticmethod
     def _quat_to_rot6d(quat_xyzw: np.ndarray) -> np.ndarray:
-        x, y, z, w = quat_xyzw
-        # Quaternion to rotation matrix.
-        r00 = 1 - 2 * (y * y + z * z)
-        r01 = 2 * (x * y - z * w)
-        r02 = 2 * (x * z + y * w)
-        r10 = 2 * (x * y + z * w)
-        r11 = 1 - 2 * (x * x + z * z)
-        r12 = 2 * (y * z - x * w)
-        r20 = 2 * (x * z - y * w)
-        r21 = 2 * (y * z + x * w)
-        r22 = 1 - 2 * (x * x + y * y)
-        rot = np.array(
-            [
-                [r00, r01, r02],
-                [r10, r11, r12],
-                [r20, r21, r22],
-            ],
-            dtype=np.float32,
-        )
-        # 6D representation = first two columns.
+        rot = Rotation.from_quat(quat_xyzw).as_matrix().astype(np.float32)
         return np.concatenate([rot[:, 0], rot[:, 1]], axis=0)
 
     @staticmethod
@@ -293,37 +275,8 @@ class KinovaEnvironment(_environment.Environment):
         b3 = np.cross(b1, b2)
 
         rot = np.stack([b1, b2, b3], axis=1)
-        return KinovaEnvironment._rotmat_to_quat(rot)
+        return Rotation.from_matrix(rot).as_quat().astype(np.float32)
 
     @staticmethod
     def _rotmat_to_quat(rot: np.ndarray) -> np.ndarray:
-        # Returns quaternion in [x, y, z, w].
-        t = np.trace(rot)
-        if t > 0:
-            s = np.sqrt(t + 1.0) * 2
-            w = 0.25 * s
-            x = (rot[2, 1] - rot[1, 2]) / s
-            y = (rot[0, 2] - rot[2, 0]) / s
-            z = (rot[1, 0] - rot[0, 1]) / s
-        elif rot[0, 0] > rot[1, 1] and rot[0, 0] > rot[2, 2]:
-            s = np.sqrt(1.0 + rot[0, 0] - rot[1, 1] - rot[2, 2]) * 2
-            w = (rot[2, 1] - rot[1, 2]) / s
-            x = 0.25 * s
-            y = (rot[0, 1] + rot[1, 0]) / s
-            z = (rot[0, 2] + rot[2, 0]) / s
-        elif rot[1, 1] > rot[2, 2]:
-            s = np.sqrt(1.0 + rot[1, 1] - rot[0, 0] - rot[2, 2]) * 2
-            w = (rot[0, 2] - rot[2, 0]) / s
-            x = (rot[0, 1] + rot[1, 0]) / s
-            y = 0.25 * s
-            z = (rot[1, 2] + rot[2, 1]) / s
-        else:
-            s = np.sqrt(1.0 + rot[2, 2] - rot[0, 0] - rot[1, 1]) * 2
-            w = (rot[1, 0] - rot[0, 1]) / s
-            x = (rot[0, 2] + rot[2, 0]) / s
-            y = (rot[1, 2] + rot[2, 1]) / s
-            z = 0.25 * s
-
-        quat = np.array([x, y, z, w], dtype=np.float32)
-        quat /= np.linalg.norm(quat) + 1e-8
-        return quat
+        return Rotation.from_matrix(rot).as_quat().astype(np.float32)

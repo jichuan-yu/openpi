@@ -60,7 +60,7 @@ cd /home/jichuan/projects/any4lerobot/ds_version_convert/v30_to_v21
 
 uv run convert_dataset_v30_to_v21.py \
     --repo-id=dummy \
-    --root=/home/jichuan/projects/openpi/dataset/20260221_T00-00-01-00_merge_last_frame
+    --root=/home/jichuan/projects/openpi/dataset/20260402_T00-00-01-00_merge_goal_image
 ```
 
 **3. Train**
@@ -69,9 +69,9 @@ uv run convert_dataset_v30_to_v21.py \
 cd /home/jichuan/projects/openpi
 
 export HF_LEROBOT_HOME=/home/jichuan/projects/openpi/dataset
-uv run scripts/compute_norm_stats.py --config-name pi0_kinova
+uv run scripts/compute_norm_stats.py --config-name pi05_kinova
 
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi0_kinova --exp-name=20260326_0010 --overwrite
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_kinova --exp-name=20260402_0010_goal_image_pi05 --overwrite
 ```
 
 **4. Inference**

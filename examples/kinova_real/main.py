@@ -14,21 +14,21 @@ from examples.kinova_real import env as _env
 
 @dataclasses.dataclass
 class Args:
-    config_name: str = "pi0_kinova"
-    checkpoint_dir: str = "./checkpoints/pi0_kinova/20260326_0010/30000"
+    config_name: str = "pi05_kinova"
+    checkpoint_dir: str = "./checkpoints/pi05_kinova/20260402_0010_goal_image_pi05/29999"
 
     action_horizon: int = 16
 
     num_episodes: int = 1
     max_episode_steps: int = 1000
-    max_hz: float = 5.0
+    max_hz: float = 10.0
 
     render_height: int = 224
     render_width: int = 224
     wait_timeout_sec: float = 10.0
 
     goal_image_path: str = ""
-    prompt: str = "Assemble to match the goal image."
+    prompt: str = "<control_mode> end effector </control_mode> Assemble to match the goal image."
 
 
 def main(args: Args) -> None:
