@@ -28,7 +28,8 @@ class Args:
     wait_timeout_sec: float = 10.0
 
     goal_image_path: str = ""
-    prompt: str = "<control_mode> end effector </control_mode> Assemble to match the goal image."
+    prompt: str = "<control_mode> end effector </control_mode> Assemble the currently grasped LEGO brick onto the existing structure on the green baseplate, matching the configuration shown in the goal image."
+    # "<control_mode> end effector </control_mode> Assemble to match the goal image.",
 
 
 def main(args: Args) -> None:

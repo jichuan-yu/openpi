@@ -33,7 +33,7 @@ class KinovaEnvironment(_environment.Environment):
         render_width: int = 224,
         force_scale_factor: float = 0.05,
         goal_image_path: str | None = None,
-        prompt: str | None = "<control_mode> end effector </control_mode> Assemble to match the goal image.",
+        prompt: str | None = None,
         wait_timeout_sec: float = 10.0,
         init_node: bool = True,
     ) -> None:
@@ -42,6 +42,45 @@ class KinovaEnvironment(_environment.Environment):
         self._force_scale_factor = force_scale_factor
         self._prompt = prompt
         self._wait_timeout_sec = wait_timeout_sec
+        self._image_crop_params = {
+            "wrist_camera": {
+                "crop_mode": "center",
+                "scale_factor": 1.0,
+                "keep_aspect": True,
+            },
+            "fixed_camera": {
+                "crop_mode": "bottom_right",
+                "scale_factor": 1.0,
+                "keep_aspect": True,
+            },
+            "goal_image": {
+                "crop_mode": "bottom_right",
+                "scale_factor": 1.0,
+                "keep_aspect": True,
+            },
+            ##################### Zoomed-in cropping #####################
+            # "wrist_camera": {
+            #     "target_h": 256,
+            #     "target_w": 256,
+            #     "crop_mode": "bottom_center_right",
+            #     "scale_factor": 1.1,
+            #     "keep_aspect": True,
+            # },
+            # "fixed_camera": {
+            #     "target_h": 256,
+            #     "target_w": 256,
+            #     "crop_mode": "bottom_center_right",
+            #     "scale_factor": 1.1,
+            #     "keep_aspect": True,
+            # },
+            # "goal_image": {
+            #     "target_h": 256,
+            #     "target_w": 256,
+            #     "crop_mode": "bottom_center_right",
+            #     "scale_factor": 1.1,
+            #     "keep_aspect": True,
+            # },
+        }
 
         self._bridge = CvBridge()
         self._lock = threading.Lock()
@@ -186,7 +225,7 @@ class KinovaEnvironment(_environment.Environment):
         self.set_goal_image(img_rgb)
 
     def set_goal_image(self, image_rgb: np.ndarray) -> None:
-        processed = self._preprocess_image(image_rgb)
+        processed = self._preprocess_image(image_rgb, "goal_image")
         with self._lock:
             self._images["goal_image"] = processed
 
@@ -216,7 +255,7 @@ class KinovaEnvironment(_environment.Environment):
     def _camera_callback(self, msg: CompressedImage, cam_name: str) -> None:
         img_bgr = self._bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="bgr8")
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        img = self._preprocess_image(img_rgb)
+        img = self._preprocess_image(img_rgb, cam_name)
         with self._lock:
             self._images[cam_name] = img
 
@@ -254,9 +293,94 @@ class KinovaEnvironment(_environment.Environment):
         with self._lock:
             self._external_force = np.array([force.x, force.y, force.z], dtype=np.float32)
 
-    def _preprocess_image(self, img: np.ndarray) -> np.ndarray:
-        return image_tools.convert_to_uint8(
-            image_tools.resize_with_pad(img, self._render_height, self._render_width)
+    def _preprocess_image(self, img: np.ndarray, cam_name: str) -> np.ndarray:
+        params = self._image_crop_params.get(cam_name, {})
+        crop_mode = params.get("crop_mode", "center")
+        scale_factor = float(params.get("scale_factor", 1.0))
+        keep_aspect = bool(params.get("keep_aspect", True))
+
+        resized = self._resize_and_crop(
+            img,
+            self._render_height,
+            self._render_width,
+            crop_mode=crop_mode,
+            scale_factor=scale_factor,
+            keep_aspect=keep_aspect,
+        )
+        return image_tools.convert_to_uint8(resized)
+
+    def _resize_and_crop(
+        self,
+        image: np.ndarray,
+        target_h: int,
+        target_w: int,
+        crop_mode: str = "center",
+        scale_factor: float = 1.0,
+        keep_aspect: bool = True,
+    ) -> np.ndarray:
+        h, w = image.shape[:2]
+
+        if keep_aspect:
+            scale = max(target_w / w, target_h / h) * scale_factor
+            scale_x = scale
+            scale_y = scale
+            new_w = int(round(w * scale_x))
+            new_h = int(round(h * scale_y))
+        else:
+            scale_x = (target_w / w) * scale_factor
+            scale_y = (target_h / h) * scale_factor
+            new_w = int(round(w * scale_x))
+            new_h = int(round(h * scale_y))
+
+        start_x = (new_w - target_w) // 2
+        start_y = (new_h - target_h) // 2
+
+        if crop_mode == "left":
+            start_x = 0
+        elif crop_mode == "right":
+            start_x = new_w - target_w
+        elif crop_mode == "top":
+            start_y = 0
+        elif crop_mode == "bottom":
+            start_y = new_h - target_h
+        elif crop_mode == "top_left":
+            start_x = 0
+            start_y = 0
+        elif crop_mode == "top_right":
+            start_x = new_w - target_w
+            start_y = 0
+        elif crop_mode == "bottom_left":
+            start_x = 0
+            start_y = new_h - target_h
+        elif crop_mode == "bottom_right":
+            start_x = new_w - target_w
+            start_y = new_h - target_h
+        elif crop_mode == "bottom_center_right":
+            offset_x = (new_w - target_w) // 6
+            start_x = (new_w - target_w) // 2 + offset_x
+            start_y = new_h - target_h
+        elif crop_mode == "center":
+            pass
+        else:
+            raise ValueError(f"Unknown crop_mode '{crop_mode}'")
+
+        start_x = np.clip(start_x, 0, max(0, new_w - target_w))
+        start_y = np.clip(start_y, 0, max(0, new_h - target_h))
+
+        m = np.array(
+            [
+                [1.0 / scale_x, 0.0, start_x / scale_x],
+                [0.0, 1.0 / scale_y, start_y / scale_y],
+            ],
+            dtype=np.float32,
+        )
+
+        return cv2.warpAffine(
+            image,
+            m,
+            (target_w, target_h),
+            flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
+            borderMode=cv2.BORDER_REPLICATE,
         )
 
     @staticmethod

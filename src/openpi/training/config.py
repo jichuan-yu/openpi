@@ -360,7 +360,8 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 class LeRobotKinovaDataConfig(DataConfigFactory):
     """Config for Kinova Gen3 datasets in LeRobot format."""
 
-    default_prompt: str | None = "<control_mode> end effector </control_mode> Assemble to match the goal image."
+    default_prompt: str | None = "<control_mode> end effector </control_mode> Assemble the currently grasped LEGO brick onto the existing structure on the green baseplate, matching the configuration shown in the goal image."
+    # "<control_mode> end effector </control_mode> Assemble to match the goal image.",
     use_delta_actions: bool = False
 
     @override
@@ -619,8 +620,8 @@ _CONFIGS = [
         data=LeRobotKinovaDataConfig(
             repo_id="20260402_T00-00-01-00_merge_goal_image",
             base_config=DataConfig(prompt_from_task=False),
-            default_prompt="<control_mode> end effector </control_mode> Assemble to match the goal image.",
-        ),
+            default_prompt= "<control_mode> end effector </control_mode> Assemble the currently grasped LEGO brick onto the existing structure on the green baseplate, matching the configuration shown in the goal image.",
+        ),  # "<control_mode> end effector </control_mode> Assemble to match the goal image.",
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=30_000,
         num_workers=8,
@@ -645,12 +646,12 @@ _CONFIGS = [
         data=LeRobotKinovaDataConfig(
             repo_id="20260402_T00-00-01-00_merge_goal_image",
             base_config=DataConfig(prompt_from_task=False),
-            default_prompt="<control_mode> end effector </control_mode> Assemble to match the goal image.",
-        ),
+            default_prompt= "<control_mode> end effector </control_mode> Assemble the currently grasped LEGO brick onto the existing structure on the green baseplate, matching the configuration shown in the goal image.",
+        ),  # "<control_mode> end effector </control_mode> Assemble to match the goal image.",
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        num_train_steps=30_000,
+        num_train_steps=50_000,
         num_workers=8,
-        save_interval=5000,
+        save_interval=10_000,
         batch_size=32,
         freeze_filter=pi0_config.Pi0Config(
             pi05=True,
