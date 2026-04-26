@@ -51,6 +51,7 @@ class Runtime:
         """Runs a single episode."""
         logging.info("Starting episode...")
         self._environment.reset()
+        logging.info("Environment reset complete.")
         self._agent.reset()
         for subscriber in self._subscribers:
             subscriber.on_episode_start()
@@ -80,8 +81,11 @@ class Runtime:
     def _step(self) -> None:
         """A single step of the runtime loop."""
         observation = self._environment.get_observation()
+        logging.info("Observation acquired.")
         action = self._agent.get_action(observation)
+        logging.info("Inference returned action.")
         self._environment.apply_action(action)
+        logging.info("Action published.")
 
         for subscriber in self._subscribers:
             subscriber.on_step(observation, action)

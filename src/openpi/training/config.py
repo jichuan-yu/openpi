@@ -661,6 +661,58 @@ _CONFIGS = [
         ).get_freeze_filter(),
         ema_decay=None, # Turn off EMA for LoRA finetuning.
     ),
+    TrainConfig(
+        name="pi0_kinova_zoom_goalimage_lastframe",
+        project_name="openpi_kinova",
+        model=pi0_config.Pi0Config(
+            action_horizon=16,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotKinovaDataConfig(
+            repo_id="20260410_T02-00-00-00_merge_zoom_goalimage_lastframe",
+            base_config=DataConfig(prompt_from_task=False),
+            default_prompt= "<control_mode> end effector </control_mode> Assemble the currently grasped LEGO brick onto the existing structure on the green baseplate, matching the configuration shown in the goal image.",
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        num_workers=8,
+        save_interval=5000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            action_horizon=16,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None, # Turn off EMA for LoRA finetuning.
+    ),
+    TrainConfig(
+        name="pi05_kinova_zoom_goalimage_lastframe",
+        project_name="openpi_kinova",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=16,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotKinovaDataConfig(
+            repo_id="20260410_T02-00-00-00_merge_zoom_goalimage_lastframe",
+            base_config=DataConfig(prompt_from_task=False),
+            default_prompt= "<control_mode> end effector </control_mode> Assemble the currently grasped LEGO brick onto the existing structure on the green baseplate, matching the configuration shown in the goal image.",
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=50_000,
+        num_workers=8,
+        save_interval=10_000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=16,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None, # Turn off EMA for LoRA finetuning.
+    ),
 
     #
     # Inference Aloha configs.

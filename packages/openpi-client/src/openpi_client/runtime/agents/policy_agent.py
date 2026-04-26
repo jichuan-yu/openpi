@@ -1,3 +1,5 @@
+import logging
+
 from typing_extensions import override
 
 from openpi_client import base_policy as _base_policy
@@ -12,6 +14,7 @@ class PolicyAgent(_agent.Agent):
 
     @override
     def get_action(self, observation: dict) -> dict:
+        logging.info("Starting policy inference.")
         return self._policy.infer(observation)
 
     def reset(self) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 from pathlib import Path
 from typing import Optional
@@ -37,49 +38,50 @@ class KinovaEnvironment(_environment.Environment):
         wait_timeout_sec: float = 10.0,
         init_node: bool = True,
     ) -> None:
+        logging.info("KinovaEnvironment: init start.")
         self._render_height = render_height
         self._render_width = render_width
         self._force_scale_factor = force_scale_factor
         self._prompt = prompt
         self._wait_timeout_sec = wait_timeout_sec
         self._image_crop_params = {
-            "wrist_camera": {
-                "crop_mode": "center",
-                "scale_factor": 1.0,
-                "keep_aspect": True,
-            },
-            "fixed_camera": {
-                "crop_mode": "bottom_right",
-                "scale_factor": 1.0,
-                "keep_aspect": True,
-            },
-            "goal_image": {
-                "crop_mode": "bottom_right",
-                "scale_factor": 1.0,
-                "keep_aspect": True,
-            },
-            ##################### Zoomed-in cropping #####################
             # "wrist_camera": {
-            #     "target_h": 256,
-            #     "target_w": 256,
-            #     "crop_mode": "bottom_center_right",
-            #     "scale_factor": 1.1,
+            #     "crop_mode": "center",
+            #     "scale_factor": 1.0,
             #     "keep_aspect": True,
             # },
             # "fixed_camera": {
-            #     "target_h": 256,
-            #     "target_w": 256,
-            #     "crop_mode": "bottom_center_right",
-            #     "scale_factor": 1.1,
+            #     "crop_mode": "bottom_right",
+            #     "scale_factor": 1.0,
             #     "keep_aspect": True,
             # },
             # "goal_image": {
-            #     "target_h": 256,
-            #     "target_w": 256,
-            #     "crop_mode": "bottom_center_right",
-            #     "scale_factor": 1.1,
+            #     "crop_mode": "bottom_right",
+            #     "scale_factor": 1.0,
             #     "keep_aspect": True,
             # },
+            ##################### Zoomed-in cropping #####################
+            "wrist_camera": {
+                "target_h": 256,
+                "target_w": 256,
+                "crop_mode": "bottom_center_right",
+                "scale_factor": 1.1,
+                "keep_aspect": True,
+            },
+            "fixed_camera": {
+                "target_h": 256,
+                "target_w": 256,
+                "crop_mode": "bottom_center_right",
+                "scale_factor": 1.1,
+                "keep_aspect": True,
+            },
+            "goal_image": {
+                "target_h": 256,
+                "target_w": 256,
+                "crop_mode": "bottom_center_right",
+                "scale_factor": 1.0,
+                "keep_aspect": True,
+            },
         }
 
         self._bridge = CvBridge()
@@ -95,8 +97,13 @@ class KinovaEnvironment(_environment.Environment):
         self._external_force: Optional[np.ndarray] = None
 
         if init_node and not rospy.core.is_initialized():
+            logging.info("KinovaEnvironment: calling rospy.init_node...")
             rospy.init_node("openpi_kinova_runtime", anonymous=True)
+            logging.info("KinovaEnvironment: rospy.init_node complete.")
+        else:
+            logging.info("KinovaEnvironment: rospy already initialized, skipping init_node.")
 
+        logging.info("KinovaEnvironment: creating camera subscribers...")
         self._fixed_camera_sub = rospy.Subscriber(
             fixed_camera_topic,
             CompressedImage,
@@ -109,6 +116,9 @@ class KinovaEnvironment(_environment.Environment):
             lambda msg: self._camera_callback(msg, "wrist_camera"),
             queue_size=3,
         )
+        logging.info("KinovaEnvironment: camera subscribers created.")
+
+        logging.info("KinovaEnvironment: creating state subscribers...")
         self._ee_pose_sub = rospy.Subscriber(
             ee_pose_topic,
             PoseStamped,
@@ -127,7 +137,9 @@ class KinovaEnvironment(_environment.Environment):
             self._wrench_callback,
             queue_size=10,
         )
+        logging.info("KinovaEnvironment: state subscribers created.")
 
+        logging.info("KinovaEnvironment: creating action publishers...")
         self._ee_pose_action_pub = rospy.Publisher(
             ee_action_topic,
             PoseStamped,
@@ -138,13 +150,20 @@ class KinovaEnvironment(_environment.Environment):
             JointState,
             queue_size=10,
         )
+        logging.info("KinovaEnvironment: action publishers created.")
 
         if goal_image_path is not None:
+            logging.info("KinovaEnvironment: loading goal image from %s", goal_image_path)
             self.set_goal_image_from_path(goal_image_path)
+            logging.info("KinovaEnvironment: goal image loaded.")
+
+        logging.info("KinovaEnvironment: init complete.")
 
     @override
     def reset(self) -> None:
+        logging.info("Waiting for Kinova observations to become ready...")
         self._wait_until_ready(self._wait_timeout_sec)
+        logging.info("Kinova observations are ready.")
 
     @override
     def is_episode_complete(self) -> bool:
